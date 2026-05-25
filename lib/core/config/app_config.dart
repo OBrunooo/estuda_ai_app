@@ -3,13 +3,13 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, Tar
 /// Base URL da API Laravel (prefixo `/api` já incluído).
 ///
 /// Sobrescreva em build, se precisar (com ou sem barra no final — o app normaliza):
-/// `flutter run --dart-define=API_BASE_URL=http://SEU_IP:8000/api`
+/// `flutter run --dart-define=API_BASE_URL=http://SEU_IP:80/api`
 ///
-/// - **Emulador Android:** o padrão é `http://10.0.2.2:8000/api` (alias do host).
+/// - **Emulador Android:** o padrão é `http://10.0.2.2:80/api` (alias do host).
 ///   `127.0.0.1` no emulador aponta para o próprio emulador → "Connection refused".
 /// - **Dispositivo físico Android:** use o IP da sua máquina na LAN (ex. `192.168.0.10`)
 ///   via `--dart-define`; `10.0.2.2` não funciona no aparelho real.
-/// - **iOS Simulator / desktop:** padrão `http://127.0.0.1:8000/api`.
+/// - **iOS Simulator / desktop / web:** padrão `http://127.0.0.1:80/api`.
 class AppConfig {
   AppConfig._();
 
@@ -25,12 +25,12 @@ class AppConfig {
       return _ensureTrailingSlash(_fromEnvironment);
     }
     if (kIsWeb) {
-      return 'http://127.0.0.1:8000/api/';
+      return 'http://127.0.0.1:80/api/';
     }
     if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8000/api/';
+      return 'http://127.0.0.1:80/api/';
     }
-    return 'http://127.0.0.1:8000/api/';
+    return 'http://127.0.0.1:80/api/';
   }
 
   static String _ensureTrailingSlash(String url) {
@@ -60,11 +60,30 @@ class AppConfig {
 
   /// Timeouts padrão para login, listagem e demais chamadas curtas.
   ///
-  /// `connectTimeout` proposital curto (8s) para que o app reaja rápido
-  /// quando o backend está fora do ar / a rede está caída.
-  /// `receiveTimeout` cobre a janela de resposta normal do Laravel
-  /// (login, lista, etc.).
-  static const Duration defaultConnectTimeout = Duration(seconds: 8);
-  static const Duration defaultReceiveTimeout = Duration(seconds: 30);
-  static const Duration defaultSendTimeout = Duration(seconds: 20);
+  /// Valores mais altos evitam falso "erro de conexão" quando o Laravel demora
+  /// a responder (servidor de desenvolvimento ocupado, cold start, etc.).
+  /// Ajuste via `--dart-define=API_DEFAULT_TIMEOUT_SECONDS=180` se precisar.
+  static Duration get defaultConnectTimeout {
+    const seconds = int.fromEnvironment(
+      'API_DEFAULT_CONNECT_TIMEOUT_SECONDS',
+      defaultValue: 30,
+    );
+    return Duration(seconds: seconds.clamp(8, 120));
+  }
+
+  static Duration get defaultReceiveTimeout {
+    const seconds = int.fromEnvironment(
+      'API_DEFAULT_TIMEOUT_SECONDS',
+      defaultValue: 120,
+    );
+    return Duration(seconds: seconds.clamp(30, 600));
+  }
+
+  static Duration get defaultSendTimeout {
+    const seconds = int.fromEnvironment(
+      'API_DEFAULT_SEND_TIMEOUT_SECONDS',
+      defaultValue: 60,
+    );
+    return Duration(seconds: seconds.clamp(20, 300));
+  }
 }

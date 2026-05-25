@@ -12,6 +12,7 @@ import 'core/network/pending_tema_generation_storage.dart';
 import 'core/network/token_storage.dart';
 import 'repositories/auth_repository.dart';
 import 'repositories/tema_repository.dart';
+import 'repositories/user_repository.dart';
 import 'services/tema_study_service.dart';
 
 Future<void> main() async {
@@ -20,12 +21,21 @@ Future<void> main() async {
   final tokenStorage = TokenStorage();
   final pendingGeracaoStorage = PendingTemaGenerationStorage();
   late final AuthNotifier authNotifier;
+  late final AvatarNotifier avatarNotifier;
   final apiClient = ApiClient(
     tokenStorage: tokenStorage,
     onUnauthorized: () => authNotifier.handleUnauthorized(),
   );
   final authRepo = AuthRepository(apiClient, tokenStorage, pendingGeracaoStorage);
-  authNotifier = AuthNotifier(tokenStorage, authRepo, pendingGeracaoStorage);
+  final userRepo = UserRepository(apiClient);
+  avatarNotifier = AvatarNotifier(userRepo);
+  authNotifier = AuthNotifier(
+    tokenStorage,
+    authRepo,
+    userRepo,
+    pendingGeracaoStorage,
+    onUserLoaded: (user) => avatarNotifier.applyFromUserAvatarId(user?.avatarId),
+  );
   final temaRepo = TemaRepository(apiClient);
   final temaGeracaoNotifier = TemaGeracaoNotifier();
   final temaStudy = TemaStudyService(
@@ -36,7 +46,6 @@ Future<void> main() async {
   );
   final router = createAppRouter(authNotifier);
 
-  final avatarNotifier = AvatarNotifier();
   await avatarNotifier.loadFromDisk();
 
   runApp(
@@ -46,6 +55,7 @@ Future<void> main() async {
         ChangeNotifierProvider<AvatarNotifier>.value(value: avatarNotifier),
         ChangeNotifierProvider<TemaGeracaoNotifier>.value(value: temaGeracaoNotifier),
         Provider<AuthRepository>.value(value: authRepo),
+        Provider<UserRepository>.value(value: userRepo),
         Provider<TemaRepository>.value(value: temaRepo),
         Provider<TemaStudyService>.value(value: temaStudy),
       ],

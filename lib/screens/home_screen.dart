@@ -31,8 +31,8 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _geracaoNotifier = context.read<TemaGeracaoNotifier>();
     _geracaoNotifier.addListener(_onGeracaoEmSegundoPlano);
-    _carregar();
     _atualizarGeracaoPendente();
+    _carregarSeOcioso();
   }
 
   @override
@@ -43,8 +43,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onGeracaoEmSegundoPlano() {
     if (!mounted) return;
-    _carregar();
     _atualizarGeracaoPendente();
+    _carregarSeOcioso();
   }
 
   Future<void> _atualizarGeracaoPendente() async {
@@ -53,6 +53,23 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) {
       setState(() => _geracaoPendente = p);
     }
+  }
+
+  /// Carrega a lista **apenas** quando não há geração ativa, porque o backend
+  /// (`php artisan serve`) é single-threaded: enquanto a OpenAI roda no
+  /// servidor, qualquer outra requisição fica enfileirada e estoura o
+  /// timeout. Quando a geração termina, [TemaStudyService] notifica e este
+  /// método é chamado de novo.
+  Future<void> _carregarSeOcioso() async {
+    if (!mounted) return;
+    final svc = context.read<TemaStudyService>();
+    if (svc.geracaoAtiva) {
+      if (_loading) {
+        setState(() => _loading = false);
+      }
+      return;
+    }
+    await _carregar();
   }
 
   Future<void> _carregar() async {
@@ -85,7 +102,39 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _refresh() async {
+    final svc = context.read<TemaStudyService>();
+    if (svc.geracaoAtiva) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            content: Text(
+              'Aguarde a geração do tema terminar para atualizar a lista.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    await _carregar();
+    await _atualizarGeracaoPendente();
+  }
+
   void _abrirTema(TemaResumoModel t) {
+    final svc = context.read<TemaStudyService>();
+    if (svc.geracaoAtiva) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text(
+            'O servidor está ocupado gerando outro tema. Aguarde alguns '
+            'instantes para abrir este.',
+          ),
+        ),
+      );
+      return;
+    }
     context.push(
       '/loading',
       extra: LoadingQuestoesArgs.existente(temaId: t.temaId, temaNome: t.tema),
@@ -178,7 +227,22 @@ class _HomeScreenState extends State<HomeScreen> {
         child: _buildBody(),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/novo-tema'),
+        onPressed: () {
+          final svc = context.read<TemaStudyService>();
+          if (svc.geracaoAtiva) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                behavior: SnackBarBehavior.floating,
+                content: Text(
+                  'Já tem um tema sendo gerado. Aguarde terminar para '
+                  'adicionar outro.',
+                ),
+              ),
+            );
+            return;
+          }
+          context.push('/novo-tema');
+        },
         icon: const Icon(Icons.add),
         label: const Text('Novo tema'),
       ),
@@ -201,7 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(_error!, textAlign: TextAlign.center),
               const SizedBox(height: 24),
               FilledButton(
-                onPressed: _carregar,
+                onPressed: _carregarSeOcioso,
                 child: const Text('Tentar novamente'),
               ),
             ],
@@ -212,13 +276,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final temas = _temas ?? [];
     final pendente = _geracaoPendente;
+    final geracaoAtiva = context.read<TemaStudyService>().geracaoAtiva;
 
     if (temas.isEmpty) {
       return RefreshIndicator(
-        onRefresh: () async {
-          await _carregar();
-          await _atualizarGeracaoPendente();
-        },
+        onRefresh: _refresh,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
           children: [
@@ -231,10 +293,18 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.menu_book_outlined, size: 64, color: Theme.of(context).colorScheme.primary),
+                  Icon(
+                    geracaoAtiva
+                        ? Icons.hourglass_top_rounded
+                        : Icons.menu_book_outlined,
+                    size: 64,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                   const SizedBox(height: 16),
                   Text(
-                    'Nenhum tema ainda',
+                    geracaoAtiva
+                        ? 'Gerando seu tema…'
+                        : 'Nenhum tema ainda',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -242,18 +312,23 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Crie um tema para a API gerar ou buscar questões.',
+                    geracaoAtiva
+                        ? 'Atualizaremos esta lista assim que o servidor '
+                            'terminar.'
+                        : 'Crie um tema para a API gerar ou buscar questões.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                   ),
-                  const SizedBox(height: 24),
-                  FilledButton.icon(
-                    onPressed: () => context.push('/novo-tema'),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Adicionar tema'),
-                  ),
+                  if (!geracaoAtiva) ...[
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      onPressed: () => context.push('/novo-tema'),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Adicionar tema'),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -263,10 +338,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: () async {
-        await _carregar();
-        await _atualizarGeracaoPendente();
-      },
+      onRefresh: _refresh,
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
         itemCount: temas.length + (pendente != null ? 1 : 0),

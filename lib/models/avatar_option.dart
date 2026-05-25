@@ -18,6 +18,19 @@ class AvatarOption {
     return null;
   }
 
+  /// Mapeamento canônico com `users.avatar_id` no Laravel (0 = sem avatar).
+  static int toApiId(String id) {
+    final index = all.indexWhere((o) => o.id == id);
+    return index < 0 ? 0 : index + 1;
+  }
+
+  static String? fromApiId(int? apiId) {
+    if (apiId == null || apiId <= 0) return null;
+    final index = apiId - 1;
+    if (index < 0 || index >= all.length) return null;
+    return all[index].id;
+  }
+
   static const List<AvatarOption> all = [
     AvatarOption(
       id: 'bat',

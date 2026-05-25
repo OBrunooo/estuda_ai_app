@@ -49,8 +49,8 @@ class UserModel {
   final String name;
   final String email;
 
-  /// `users.avatar_id` (int) — atualmente não há endpoint para escrever
-  /// (ver `PENDENCIAS_BACKEND.md`). O Flutter ignora este valor enquanto isso.
+  /// `users.avatar_id` (int, 0 = sem avatar). Sincronizado via
+  /// `POST /api/update-avatar-user` e carregado em `GET /api/me`.
   final int? avatarId;
 
   final DateTime? emailVerifiedAt;

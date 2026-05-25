@@ -42,11 +42,14 @@ class TemaStudyService {
     Future<void>(() async {
       try {
         final session = await iniciarSessaoPorTemaDigitado(temaDigitado);
+        // IMPORTANTE: liberamos a flag ANTES de notificar para que os
+        // listeners (ex.: HomeScreen) leiam `geracaoAtiva = false` e
+        // possam fazer chamadas ao backend com segurança.
+        _geracaoAtiva = false;
         _avisarGeracaoConcluida(session);
       } catch (e) {
-        _avisarGeracaoErro(e);
-      } finally {
         _geracaoAtiva = false;
+        _avisarGeracaoErro(e);
       }
     });
   }
@@ -60,11 +63,11 @@ class TemaStudyService {
     Future<void>(() async {
       try {
         final session = await iniciarSessaoRetomandoGeracao();
+        _geracaoAtiva = false;
         _avisarGeracaoConcluida(session);
       } catch (e) {
-        _avisarGeracaoErro(e);
-      } finally {
         _geracaoAtiva = false;
+        _avisarGeracaoErro(e);
       }
     });
   }

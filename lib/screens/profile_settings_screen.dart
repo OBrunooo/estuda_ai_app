@@ -6,7 +6,7 @@ import '../app/auth_notifier.dart';
 import '../app/avatar_notifier.dart';
 import '../widgets/user_avatar.dart';
 
-/// Configurações de perfil (nome/e-mail). Persistência na API ainda não existe.
+/// Configurações de perfil (nome, e-mail de leitura, avatar).
 class ProfileSettingsScreen extends StatefulWidget {
   const ProfileSettingsScreen({super.key});
 
@@ -18,6 +18,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nome = TextEditingController();
   final _email = TextEditingController();
+  bool _saving = false;
 
   @override
   void initState() {
@@ -43,8 +44,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   Future<void> _salvar() async {
     if (!_formKey.currentState!.validate()) return;
     final auth = context.read<AuthNotifier>();
-    final existing = auth.currentUser;
-    if (existing == null) {
+    if (auth.currentUser == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -53,19 +53,20 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       );
       return;
     }
-    auth.updateLocalUser(
-      existing.copyWith(
-        name: _nome.text.trim(),
-        email: _email.text.trim(),
-      ),
-    );
+
+    setState(() => _saving = true);
+    final err = await auth.updateNameOnServer(_nome.text.trim());
     if (!mounted) return;
+    setState(() => _saving = false);
+
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(err)),
+      );
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Dados guardados neste aparelho. A API de perfil virá em breve.',
-        ),
-      ),
+      const SnackBar(content: Text('Nome atualizado com sucesso.')),
     );
   }
 
@@ -183,7 +184,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Use Salvar só para estes dados. O envio ao servidor virá depois.',
+                'O nome é salvo no servidor. A alteração de e-mail ainda não está disponível.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
@@ -197,6 +198,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     TextFormField(
                       controller: _nome,
                       textCapitalization: TextCapitalization.words,
+                      enabled: !_saving,
                       decoration: const InputDecoration(
                         labelText: 'Nome',
                         border: OutlineInputBorder(),
@@ -205,32 +207,33 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                         if (v == null || v.trim().isEmpty) {
                           return 'Informe o nome';
                         }
+                        if (v.trim().length < 3) {
+                          return 'O nome deve ter pelo menos 3 caracteres';
+                        }
                         return null;
                       },
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _email,
+                      readOnly: true,
                       keyboardType: TextInputType.emailAddress,
                       autocorrect: false,
                       decoration: const InputDecoration(
                         labelText: 'E-mail',
                         border: OutlineInputBorder(),
                       ),
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'Informe o e-mail';
-                        }
-                        if (!v.contains('@')) {
-                          return 'E-mail inválido';
-                        }
-                        return null;
-                      },
                     ),
                     const SizedBox(height: 24),
                     FilledButton(
-                      onPressed: _salvar,
-                      child: const Text('Atualizar dados'),
+                      onPressed: _saving ? null : _salvar,
+                      child: _saving
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Atualizar nome'),
                     ),
                   ],
                 ),

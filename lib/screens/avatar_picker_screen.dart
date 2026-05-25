@@ -30,7 +30,14 @@ class _AvatarPickerScreenState extends State<AvatarPickerScreen> {
   Future<void> _confirmar() async {
     final id = _draftId;
     if (id != null) {
-      await context.read<AvatarNotifier>().select(id);
+      final err = await context.read<AvatarNotifier>().selectAndSync(id);
+      if (!mounted) return;
+      if (err != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(err)),
+        );
+        return;
+      }
     }
     if (!mounted) return;
     if (context.canPop()) {
