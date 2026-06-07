@@ -6,6 +6,9 @@ import '../core/network/api_exception.dart';
 import '../models/loading_questoes_args.dart';
 import '../services/tema_study_service.dart';
 
+/// Tela transitória que carrega os conjuntos de um tema já vinculado e
+/// navega para `/conjuntos`. Geração de tema novo **não passa mais por aqui**:
+/// roda em segundo plano com polling até o tema aparecer.
 class LoadingQuestoesScreen extends StatefulWidget {
   const LoadingQuestoesScreen({super.key, required this.args});
 
@@ -15,34 +18,35 @@ class LoadingQuestoesScreen extends StatefulWidget {
   State<LoadingQuestoesScreen> createState() => _LoadingQuestoesScreenState();
 }
 
-class _LoadingQuestoesScreenState extends State<LoadingQuestoesScreen> {
+class _LoadingQuestoesScreenState extends State<LoadingQuestoesScreen>
+    with SingleTickerProviderStateMixin {
   String? _error;
+  late final AnimationController _pulse;
 
   @override
   void initState() {
     super.initState();
-    final a = widget.args;
-    if (!a.retomarGeracao && !a.isNovoTema && !a.isTemaExistente) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.go('/home');
-      });
-      return;
-    }
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    )..repeat(reverse: true);
     WidgetsBinding.instance.addPostFrameCallback((_) => _run());
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
   }
 
   Future<void> _run() async {
     setState(() => _error = null);
     try {
       final svc = context.read<TemaStudyService>();
-      final session = widget.args.retomarGeracao
-          ? await svc.iniciarSessaoRetomandoGeracao()
-          : widget.args.isTemaExistente
-              ? await svc.iniciarSessaoPorTemaExistente(
-                  temaId: widget.args.temaId!,
-                  temaNome: widget.args.temaNome!,
-                )
-              : await svc.iniciarSessaoPorTemaDigitado(widget.args.temaDigitado!);
+      final session = await svc.iniciarSessaoPorTemaExistente(
+        temaId: widget.args.temaId,
+        temaNome: widget.args.temaNome,
+      );
       if (!mounted) return;
       context.go('/conjuntos', extra: session);
     } on ApiException catch (e) {
@@ -52,16 +56,6 @@ class _LoadingQuestoesScreenState extends State<LoadingQuestoesScreen> {
     }
   }
 
-  String get _mensagemCarregando {
-    if (widget.args.isTemaExistente) {
-      return 'Carregando questões do tema…';
-    }
-    if (widget.args.retomarGeracao) {
-      return 'Isso pode demorar.';
-    }
-    return 'Isso pode demorar.';
-  }
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -69,10 +63,14 @@ class _LoadingQuestoesScreenState extends State<LoadingQuestoesScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.close),
+          icon: const Icon(Icons.close_rounded),
           onPressed: () => context.go('/home'),
         ),
-        title: const Text('Preparando questões'),
+        title: Text(
+          widget.args.temaNome,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
       body: SafeArea(
         child: LayoutBuilder(
@@ -83,53 +81,11 @@ class _LoadingQuestoesScreenState extends State<LoadingQuestoesScreen> {
                 constraints: BoxConstraints(minHeight: constraints.maxHeight),
                 child: Center(
                   child: _error == null
-                      ? Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              width: 52,
-                              height: 52,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 3,
-                                color: scheme.primary,
-                              ),
-                            ),
-                            const SizedBox(height: 28),
-                            Text(
-                              _mensagemCarregando,
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                    height: 1.45,
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                            ),
-                          ],
-                        )
-                      : Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.error_outline_rounded,
-                              size: 52,
-                              color: scheme.error,
-                            ),
-                            const SizedBox(height: 20),
-                            Text(
-                              _error!,
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodyLarge,
-                            ),
-                            const SizedBox(height: 28),
-                            FilledButton(
-                              onPressed: () => context.go('/home'),
-                              child: const Text('Voltar'),
-                            ),
-                            const SizedBox(height: 12),
-                            OutlinedButton(
-                              onPressed: _run,
-                              child: const Text('Tentar novamente'),
-                            ),
-                          ],
+                      ? _LoadingHero(controller: _pulse, scheme: scheme)
+                      : _ErrorBlock(
+                          message: _error!,
+                          onRetry: _run,
+                          onVoltar: () => context.go('/home'),
                         ),
                 ),
               ),
@@ -137,6 +93,150 @@ class _LoadingQuestoesScreenState extends State<LoadingQuestoesScreen> {
           },
         ),
       ),
+    );
+  }
+}
+
+class _LoadingHero extends StatelessWidget {
+  const _LoadingHero({required this.controller, required this.scheme});
+
+  final AnimationController controller;
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedBuilder(
+          animation: controller,
+          builder: (context, _) {
+            final t = controller.value;
+            final glow = 0.3 + (0.4 * t);
+            final scale = 0.96 + (0.06 * t);
+            return Transform.scale(
+              scale: scale,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [scheme.primary, scheme.tertiary],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: scheme.primary.withValues(alpha: glow),
+                      blurRadius: 32,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.auto_stories_rounded,
+                  color: Colors.white,
+                  size: 52,
+                ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 32),
+        Text(
+          'Preparando seu estudo',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Estamos carregando os conjuntos e questões\ndesse tema. Só um instante…',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+                height: 1.45,
+              ),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: 26,
+          height: 26,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.6,
+            color: scheme.primary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ErrorBlock extends StatelessWidget {
+  const _ErrorBlock({
+    required this.message,
+    required this.onRetry,
+    required this.onVoltar,
+  });
+
+  final String message;
+  final VoidCallback onRetry;
+  final VoidCallback onVoltar;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 84,
+          height: 84,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: scheme.error.withValues(alpha: 0.14),
+            border: Border.all(
+              color: scheme.error.withValues(alpha: 0.45),
+              width: 1.5,
+            ),
+          ),
+          child: Icon(
+            Icons.cloud_off_rounded,
+            size: 38,
+            color: scheme.error,
+          ),
+        ),
+        const SizedBox(height: 22),
+        Text(
+          'Algo não saiu como esperado',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+                height: 1.4,
+              ),
+        ),
+        const SizedBox(height: 28),
+        FilledButton.icon(
+          onPressed: onRetry,
+          icon: const Icon(Icons.refresh_rounded),
+          label: const Text('Tentar novamente'),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton(
+          onPressed: onVoltar,
+          child: const Text('Voltar para temas'),
+        ),
+      ],
     );
   }
 }

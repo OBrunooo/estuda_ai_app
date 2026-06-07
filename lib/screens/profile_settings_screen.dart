@@ -175,7 +175,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Nome e e-mail',
+                  'Dados da conta',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: scheme.onSurfaceVariant,
@@ -184,7 +184,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'O nome é salvo no servidor. A alteração de e-mail ainda não está disponível.',
+                'Você pode atualizar o seu nome de exibição.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
@@ -214,14 +214,28 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _email,
-                      readOnly: true,
-                      keyboardType: TextInputType.emailAddress,
-                      autocorrect: false,
-                      decoration: const InputDecoration(
-                        labelText: 'E-mail',
-                        border: OutlineInputBorder(),
+                    // E-mail é só leitura por enquanto. Deixamos o campo
+                    // visivelmente opaco + cadeado para deixar claro que não
+                    // pode ser alterado (e bloqueamos foco/toque também).
+                    IgnorePointer(
+                      ignoring: true,
+                      child: Opacity(
+                        opacity: 0.55,
+                        child: TextFormField(
+                          controller: _email,
+                          readOnly: true,
+                          keyboardType: TextInputType.emailAddress,
+                          autocorrect: false,
+                          decoration: InputDecoration(
+                            labelText: 'E-mail',
+                            border: const OutlineInputBorder(),
+                            suffixIcon: Icon(
+                              Icons.lock_outline_rounded,
+                              size: 20,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),

@@ -9,9 +9,11 @@ import 'token_storage.dart';
 
 typedef UnauthorizedCallback = void Function();
 
-/// Cliente HTTP central (Dio) com token Sanctum e timeouts longos para a
-/// chamada **síncrona** `GET /api/buscar-gerar-questoes-tema`, que faz três
-/// rodadas de OpenAI antes de responder.
+/// Cliente HTTP central (Dio) com token Sanctum.
+///
+/// Todas as chamadas usam timeouts padrão — a geração de questões agora roda
+/// em job assíncrono no backend e o app descobre o resultado via polling em
+/// `listar-temas-user`.
 class ApiClient {
   ApiClient({
     required TokenStorage tokenStorage,
@@ -78,22 +80,6 @@ class ApiClient {
     } on DioException catch (e) {
       throw _mapDio(e);
     }
-  }
-
-  /// GET com timeouts estendidos (geração de questões: até 60min).
-  Future<dynamic> getLongRunning(
-    String path, {
-    Map<String, dynamic>? queryParameters,
-  }) async {
-    return get(
-      path,
-      queryParameters: queryParameters,
-      options: Options(
-        connectTimeout: AppConfig.generationConnectTimeout,
-        receiveTimeout: AppConfig.generationReceiveTimeout,
-        sendTimeout: AppConfig.defaultSendTimeout,
-      ),
-    );
   }
 
   /// POST com parsing tolerante.

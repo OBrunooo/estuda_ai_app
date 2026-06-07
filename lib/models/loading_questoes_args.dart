@@ -1,33 +1,11 @@
-/// Argumentos para [LoadingQuestoesScreen]: tema novo (texto), retomada após fechar o app,
-/// ou tema já vinculado ao usuário.
+/// Argumentos para [LoadingQuestoesScreen]: tema **já vinculado** ao usuário.
+///
+/// Geração de tema novo deixou de passar por esta tela — agora roda em
+/// segundo plano via [TemaStudyService.iniciarGeracaoEmSegundoPlano],
+/// com polling silencioso até o tema aparecer em `listar-temas-user`.
 class LoadingQuestoesArgs {
-  LoadingQuestoesArgs.novo(String tema)
-      : temaDigitado = tema.trim(),
-        temaId = null,
-        temaNome = null,
-        retomarGeracao = false;
+  LoadingQuestoesArgs({required this.temaId, required this.temaNome});
 
-  /// Continua o polling usando [PendingTemaGenerationStorage] (tema + opcional normalizado).
-  LoadingQuestoesArgs.retomarGeracao()
-      : temaDigitado = null,
-        temaId = null,
-        temaNome = null,
-        retomarGeracao = true;
-
-  LoadingQuestoesArgs.existente({required this.temaId, required this.temaNome})
-      : temaDigitado = null,
-        retomarGeracao = false;
-
-  final String? temaDigitado;
-  final int? temaId;
-  final String? temaNome;
-  final bool retomarGeracao;
-
-  bool get isNovoTema =>
-      !retomarGeracao &&
-      temaDigitado != null &&
-      temaDigitado!.isNotEmpty;
-
-  bool get isTemaExistente =>
-      !retomarGeracao && temaId != null && temaNome != null;
+  final int temaId;
+  final String temaNome;
 }

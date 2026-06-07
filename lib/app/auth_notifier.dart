@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 import '../core/network/api_exception.dart';
-import '../core/network/pending_tema_generation_storage.dart';
 import '../core/network/token_storage.dart';
 import '../models/user_model.dart';
 import '../repositories/auth_repository.dart';
@@ -13,8 +12,7 @@ class AuthNotifier extends ChangeNotifier {
   AuthNotifier(
     this._tokenStorage,
     this._authRepo,
-    this._userRepo,
-    this._pendingGeracao, {
+    this._userRepo, {
     UserLoadedCallback? onUserLoaded,
   }) : _onUserLoaded = onUserLoaded {
     _bootstrap();
@@ -23,7 +21,6 @@ class AuthNotifier extends ChangeNotifier {
   final TokenStorage _tokenStorage;
   final AuthRepository _authRepo;
   final UserRepository _userRepo;
-  final PendingTemaGenerationStorage _pendingGeracao;
   final UserLoadedCallback? _onUserLoaded;
 
   bool _ready = false;
@@ -46,7 +43,6 @@ class AuthNotifier extends ChangeNotifier {
 
   Future<void> handleUnauthorized() async {
     await _tokenStorage.clearToken();
-    await _pendingGeracao.clear();
     _loggedIn = false;
     _user = null;
     _onUserLoaded?.call(null);

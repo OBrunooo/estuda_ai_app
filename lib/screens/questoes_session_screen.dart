@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../models/conjunto_estudo.dart';
 import '../models/questao_model.dart';
 import '../repositories/tema_repository.dart';
+import '../widgets/progress_pill.dart';
 
 class _ShuffledQuestion {
   _ShuffledQuestion({
@@ -157,16 +158,27 @@ class _QuestoesSessionScreenState extends State<QuestoesSessionScreen> {
           onPressed: _finalizando ? null : () => context.pop(false),
         ),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(5),
+          preferredSize: const Size.fromHeight(38),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 5,
-                backgroundColor: scheme.surfaceContainerHigh,
-              ),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Questão ${_index + 1} de $total',
+                      style: textTheme.labelMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ProgressPill(value: progress, height: 8),
+              ],
             ),
           ),
         ),
@@ -178,26 +190,59 @@ class _QuestoesSessionScreenState extends State<QuestoesSessionScreen> {
               duration: const Duration(milliseconds: 240),
               switchInCurve: Curves.easeOutCubic,
               switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, anim) => FadeTransition(
+                opacity: anim,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.05, 0),
+                    end: Offset.zero,
+                  ).animate(anim),
+                  child: child,
+                ),
+              ),
               child: KeyedSubtree(
                 key: ValueKey<int>(_index),
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        sh.questao.questao,
-                        style: textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          height: 1.35,
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+                        decoration: BoxDecoration(
+                          color: scheme.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: scheme.outlineVariant),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'PERGUNTA',
+                              style: textTheme.labelSmall?.copyWith(
+                                color: scheme.tertiary,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              sh.questao.questao,
+                              style: textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 20),
                       ...List.generate(sh.options.length, (i) {
                         final o = sh.options[i];
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: _AlternativaCard(
+                            letra: String.fromCharCode(0x41 + i),
                             label: o.label,
                             selected: !_revealed && _selected == i,
                             revealed: _revealed,
@@ -208,6 +253,10 @@ class _QuestoesSessionScreenState extends State<QuestoesSessionScreen> {
                           ),
                         );
                       }),
+                      if (_revealed) ...[
+                        const SizedBox(height: 8),
+                        _ResultadoBanner(acertou: acertouNesta),
+                      ],
                     ],
                   ),
                 ),
@@ -244,8 +293,13 @@ class _QuestoesSessionScreenState extends State<QuestoesSessionScreen> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Cards de alternativa
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _AlternativaCard extends StatelessWidget {
   const _AlternativaCard({
+    required this.letra,
     required this.label,
     required this.selected,
     required this.revealed,
@@ -254,6 +308,7 @@ class _AlternativaCard extends StatelessWidget {
     required this.onTap,
   });
 
+  final String letra;
   final String label;
   final bool selected;
   final bool revealed;
@@ -264,29 +319,45 @@ class _AlternativaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    const green = Color(0xFF6DD3A2);
+    const red = Color(0xFFFF6B6B);
 
-    Color borderColor = scheme.outlineVariant.withValues(alpha: 0.85);
-    Color? fillColor = scheme.surfaceContainerHigh.withValues(alpha: 0.55);
+    // Estado visual: idle | selected | reveal-correct | reveal-wrong | reveal-other
+    Color borderColor = scheme.outlineVariant;
+    Color fillColor = scheme.surfaceContainerHigh.withValues(alpha: 0.55);
+    Color badgeBg = scheme.surfaceContainerHighest;
+    Color badgeFg = scheme.onSurfaceVariant;
+    double borderW = 1.0;
+    IconData? trailingIcon;
+    Color? trailingColor;
 
     if (revealed) {
       if (isCorrect) {
-        borderColor = Colors.green.shade400;
-        fillColor = Colors.green.withValues(alpha: 0.18);
+        borderColor = green;
+        fillColor = green.withValues(alpha: 0.16);
+        badgeBg = green.withValues(alpha: 0.25);
+        badgeFg = green;
+        borderW = 2.0;
+        trailingIcon = Icons.check_circle_rounded;
+        trailingColor = green;
       } else if (isWrongSelected) {
-        borderColor = Colors.red.shade400;
-        fillColor = Colors.red.withValues(alpha: 0.18);
+        borderColor = red;
+        fillColor = red.withValues(alpha: 0.14);
+        badgeBg = red.withValues(alpha: 0.22);
+        badgeFg = red;
+        borderW = 2.0;
+        trailingIcon = Icons.cancel_rounded;
+        trailingColor = red;
       }
     } else if (selected) {
-      borderColor = scheme.primary.withValues(alpha: 0.9);
+      borderColor = scheme.primary;
+      fillColor = scheme.primary.withValues(alpha: 0.10);
+      badgeBg = scheme.primary;
+      badgeFg = Colors.white;
+      borderW = 1.5;
     }
 
-    final borderW = revealed
-        ? 2.0
-        : selected
-            ? 1.5
-            : 1.0;
-
-    const radius = 12.0;
+    const radius = 18.0;
 
     return Material(
       color: Colors.transparent,
@@ -297,22 +368,40 @@ class _AlternativaCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius),
         splashFactory: NoSplash.splashFactory,
         splashColor: Colors.transparent,
-        highlightColor: Colors.transparent,
+        highlightColor: scheme.primary.withValues(alpha: 0.06),
         hoverColor: scheme.onSurface.withValues(alpha: 0.04),
-        child: Ink(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(radius),
             color: fillColor,
-            border: Border.all(
-              color: borderColor,
-              width: borderW,
-            ),
+            border: Border.all(color: borderColor, width: borderW),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: badgeBg,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    letra,
+                    style: TextStyle(
+                      color: badgeFg,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Text(
                     label,
@@ -321,18 +410,82 @@ class _AlternativaCard extends StatelessWidget {
                         ),
                   ),
                 ),
-                if (revealed && isCorrect)
-                  Icon(Icons.check_rounded, color: Colors.green.shade300, size: 24),
-                if (isWrongSelected)
-                  Icon(
-                    Icons.close_rounded,
-                    color: Colors.red.shade300,
-                    size: 24,
-                  ),
+                if (trailingIcon != null) ...[
+                  const SizedBox(width: 8),
+                  Icon(trailingIcon, color: trailingColor, size: 22),
+                ],
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Banner de resultado (após revelar)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ResultadoBanner extends StatelessWidget {
+  const _ResultadoBanner({required this.acertou});
+
+  final bool acertou;
+
+  @override
+  Widget build(BuildContext context) {
+    const green = Color(0xFF6DD3A2);
+    const red = Color(0xFFFF6B6B);
+
+    final color = acertou ? green : red;
+    final icon = acertou ? Icons.celebration_rounded : Icons.refresh_rounded;
+    final titulo = acertou ? 'Boa! Você acertou.' : 'Quase! Vamos tentar de novo.';
+    final corpo = acertou
+        ? 'Continue assim — você está no caminho certo.'
+        : 'Essa questão volta no final do conjunto para fixar.';
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.55)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.25),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  titulo,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  corpo,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        height: 1.35,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

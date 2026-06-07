@@ -94,10 +94,10 @@ GoRouter createAppRouter(AuthNotifier auth) {
         path: '/loading',
         builder: (context, state) {
           final extra = state.extra;
-          final args = extra is LoadingQuestoesArgs
-              ? extra
-              : LoadingQuestoesArgs.novo(extra is String ? extra : '');
-          return LoadingQuestoesScreen(args: args);
+          if (extra is! LoadingQuestoesArgs) {
+            return const HomeScreen();
+          }
+          return LoadingQuestoesScreen(args: extra);
         },
       ),
       GoRoute(

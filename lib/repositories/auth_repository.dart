@@ -1,7 +1,6 @@
 import '../core/network/api_client.dart';
 import '../core/network/api_exception.dart';
 import '../core/network/json_decode_util.dart';
-import '../core/network/pending_tema_generation_storage.dart';
 import '../core/network/token_storage.dart';
 import '../models/user_model.dart';
 
@@ -13,11 +12,10 @@ import '../models/user_model.dart';
 /// Sucesso (200) sempre devolve `{user: {...}, token: "..."}`.
 /// Erros: 401 `{status: "error", message}` (credenciais), 422 `{errors: {...}}`.
 class AuthRepository {
-  AuthRepository(this._client, this._tokenStorage, this._pendingGeracao);
+  AuthRepository(this._client, this._tokenStorage);
 
   final ApiClient _client;
   final TokenStorage _tokenStorage;
-  final PendingTemaGenerationStorage _pendingGeracao;
 
   Future<AuthResult> login({required String email, required String senha}) async {
     try {
@@ -54,7 +52,6 @@ class AuthRepository {
       // Token inválido ou rede: limpamos localmente do mesmo jeito.
     } finally {
       await _tokenStorage.clearToken();
-      await _pendingGeracao.clear();
     }
   }
 

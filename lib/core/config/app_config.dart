@@ -39,25 +39,6 @@ class AppConfig {
     return t.endsWith('/') ? t : '$t/';
   }
 
-  /// Tempo máximo de espera (só recebimento) para
-  /// `GET /api/buscar-gerar-questoes-tema`, que é **síncrono** no Laravel e
-  /// pode levar muitos minutos (três chamadas em sequência à OpenAI).
-  ///
-  /// Padrão: **60 minutos**. Ajuste se precisar:
-  /// `--dart-define=API_GENERATION_TIMEOUT_SECONDS=7200` (2 h)
-  static Duration get generationReceiveTimeout {
-    const seconds = int.fromEnvironment(
-      'API_GENERATION_TIMEOUT_SECONDS',
-      defaultValue: 3600,
-    );
-    return Duration(seconds: seconds.clamp(300, 86400));
-  }
-
-  /// Conexão inicial (handshake TCP) — curto **mesmo** na chamada de geração:
-  /// abrir o socket não depende do tempo de processamento no servidor; se o
-  /// servidor está fora, queremos detectar em poucos segundos.
-  static const Duration generationConnectTimeout = Duration(seconds: 8);
-
   /// Timeouts padrão para login, listagem e demais chamadas curtas.
   ///
   /// Valores mais altos evitam falso "erro de conexão" quando o Laravel demora

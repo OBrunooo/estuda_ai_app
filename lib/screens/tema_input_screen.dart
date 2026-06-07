@@ -25,91 +25,63 @@ class _TemaInputScreenState extends State<TemaInputScreen> {
   Future<void> _continuar() async {
     if (!_formKey.currentState!.validate()) return;
     final tema = _controller.text.trim();
-    final aceita = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        final scheme = Theme.of(ctx).colorScheme;
-        return AlertDialog(
-          icon: Icon(
-            Icons.hourglass_empty_rounded,
-            size: 40,
-            color: scheme.primary,
-          ),
-          iconPadding: const EdgeInsets.only(top: 8, bottom: 4),
-          title: const Text(
-            'Só avisando',
-            textAlign: TextAlign.center,
-          ),
-          titlePadding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-          content: const Text(
-            'Essa etapa pode levar uns minutinhos — é completamente normal.\n\n'
-            'Sem pressa: você pode seguir quando quiser ou voltar e deixar para depois.',
-            textAlign: TextAlign.center,
-          ),
-          contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-          actionsAlignment: MainAxisAlignment.center,
-          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          actions: [
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton(
-                  onPressed: () => Navigator.of(ctx).pop(false),
-                  child: const Text('Agora não'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.of(ctx).pop(true),
-                  child: const Text('Seguir'),
-                ),
-              ],
-            ),
-          ],
-        );
-      },
-    );
-    if (aceita != true || !mounted) return;
 
-    final entendeu = await showDialog<bool>(
+    // Bloqueio por cooldown — defesa em profundidade caso o usuário chegue
+    // aqui por outro caminho que não seja o FAB da Home.
+    final svc = context.read<TemaStudyService>();
+    final restante = svc.tempoRestanteCooldown;
+    if (restante != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text(
+            'Já existe uma solicitação de geração recente em processamento. '
+            'Aguarde ${_formatarRestante(restante)} antes de pedir outro tema.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final confirmar = await showDialog<bool>(
       context: context,
-      barrierDismissible: false,
       builder: (ctx) {
         final scheme = Theme.of(ctx).colorScheme;
         return AlertDialog(
-          icon: Icon(
-            Icons.collections_bookmark_rounded,
-            size: 40,
-            color: scheme.primary,
+          icon: Icon(Icons.auto_awesome_rounded, color: scheme.primary),
+          title: const Text('Gerar este tema?'),
+          content: Text(
+            'Vamos preparar suas questões. O processo costuma levar alguns '
+            'minutos. Você pode continuar usando o app normalmente — o tema '
+            'aparecerá na sua lista assim que estiver pronto.',
+            style: Theme.of(ctx).textTheme.bodyMedium,
           ),
-          iconPadding: const EdgeInsets.only(top: 8, bottom: 4),
-          title: const Text(
-            'Tudo certo',
-            textAlign: TextAlign.center,
-          ),
-          titlePadding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-          content: const Text(
-            'O tema vai aparecer na sua lista assim que estiver pronto.\n\n'
-            'Pode ficar na tela inicial e usar o app normalmente enquanto isso.',
-            textAlign: TextAlign.center,
-          ),
-          contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-          actionsAlignment: MainAxisAlignment.center,
-          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
             FilledButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Entendi'),
+              child: const Text('Gerar tema'),
             ),
           ],
         );
       },
     );
-    if (entendeu != true || !mounted) return;
+    if (confirmar != true || !mounted) return;
 
     context.read<TemaStudyService>().iniciarGeracaoEmSegundoPlano(tema);
     context.go('/home');
+  }
+
+  String _formatarRestante(Duration d) {
+    final totalSeg = d.inSeconds < 1 ? 1 : d.inSeconds;
+    final m = totalSeg ~/ 60;
+    final s = totalSeg % 60;
+    if (m > 0 && s > 0) return '${m}min ${s}s';
+    if (m > 0) return '${m}min';
+    return '${s}s';
   }
 
   @override
