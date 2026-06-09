@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../app/auth_notifier.dart';
+import '../app/notifications_notifier.dart';
 import '../app/tema_geracao_notifier.dart';
 import '../core/network/api_exception.dart';
 import '../models/loading_questoes_args.dart';
@@ -39,6 +40,9 @@ class _HomeScreenState extends State<HomeScreen> {
     _geracaoNotifier = context.read<TemaGeracaoNotifier>();
     _geracaoNotifier.addListener(_onGeracaoEmSegundoPlano);
     _carregarInicial();
+    // Atualiza as notificações em background ao montar a Home — assim o badge
+    // do sino reflete o que está no servidor logo no primeiro frame da tela.
+    unawaited(context.read<NotificationsNotifier>().refresh());
   }
 
   @override

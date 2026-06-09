@@ -114,14 +114,9 @@ class TemaStudyService {
         return;
       }
 
-      _notifications.push(
-        titulo: 'Geração em andamento',
-        mensagem:
-            'Seu tema e suas questões estão sendo gerados e buscados. '
-            'Aguarde alguns instantes. Caso o processo demore mais do que '
-            'o esperado, tente gerar o tema novamente.',
-        kind: AppNotificationKind.info,
-      );
+      // Após o dispatch, o backend grava a notificação correspondente — só
+      // precisamos releí-las para que o badge/painel reflita o novo item.
+      unawaited(_notifications.refresh());
 
       _garantirPolling();
     }());

@@ -11,6 +11,8 @@ import 'app/estuda_ai_app.dart';
 import 'core/network/api_client.dart';
 import 'core/network/token_storage.dart';
 import 'repositories/auth_repository.dart';
+import 'repositories/notifications_repository.dart';
+import 'repositories/notifications_seen_storage.dart';
 import 'repositories/tema_repository.dart';
 import 'repositories/temas_cache_storage.dart';
 import 'repositories/user_repository.dart';
@@ -22,23 +24,32 @@ Future<void> main() async {
   final tokenStorage = TokenStorage();
   late final AuthNotifier authNotifier;
   late final AvatarNotifier avatarNotifier;
+  late final NotificationsNotifier notificationsNotifier;
   final apiClient = ApiClient(
     tokenStorage: tokenStorage,
     onUnauthorized: () => authNotifier.handleUnauthorized(),
   );
   final authRepo = AuthRepository(apiClient, tokenStorage);
   final userRepo = UserRepository(apiClient);
+  final notificationsRepo = NotificationsRepository(apiClient);
+  final notificationsSeen = NotificationsSeenStorage();
+  notificationsNotifier = NotificationsNotifier(
+    notificationsRepo,
+    notificationsSeen,
+  );
   avatarNotifier = AvatarNotifier(userRepo);
   authNotifier = AuthNotifier(
     tokenStorage,
     authRepo,
     userRepo,
-    onUserLoaded: (user) => avatarNotifier.applyFromUserAvatarId(user?.avatarId),
+    onUserLoaded: (user) {
+      avatarNotifier.applyFromUserAvatarId(user?.avatarId);
+      notificationsNotifier.aplicarUsuario(user?.id);
+    },
   );
   final temaRepo = TemaRepository(apiClient);
   final temasCache = TemasCacheStorage();
   final temaGeracaoNotifier = TemaGeracaoNotifier();
-  final notificationsNotifier = NotificationsNotifier();
   final temaStudy = TemaStudyService(
     temaRepo,
     temaGeracaoNotifier,
@@ -60,6 +71,7 @@ Future<void> main() async {
         ),
         Provider<AuthRepository>.value(value: authRepo),
         Provider<UserRepository>.value(value: userRepo),
+        Provider<NotificationsRepository>.value(value: notificationsRepo),
         Provider<TemaRepository>.value(value: temaRepo),
         Provider<TemasCacheStorage>.value(value: temasCache),
         Provider<TemaStudyService>.value(value: temaStudy),
