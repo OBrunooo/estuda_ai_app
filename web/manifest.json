@@ -1,11 +1,11 @@
 {
-    "name": "estuda_ai_app",
-    "short_name": "estuda_ai_app",
+    "name": "Studia",
+    "short_name": "Studia",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#1E1B2E",
+    "theme_color": "#7B61FF",
+    "description": "Studia — plataforma de estudos com questões por tema.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

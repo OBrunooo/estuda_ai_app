@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../app/auth_notifier.dart';
 import '../core/network/api_exception.dart';
+import '../widgets/auth_scaffold.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _email = TextEditingController();
   final _senha = TextEditingController();
   bool _loading = false;
+  bool _mostrarSenha = false;
   String? _error;
 
   @override
@@ -50,93 +52,127 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Entrar')),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Estuda AI',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Use o mesmo e-mail e senha da sua conta na API.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                ),
-                const SizedBox(height: 32),
-                TextFormField(
-                  controller: _email,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'E-mail',
-                    prefixIcon: Icon(Icons.mail_outline),
+    final scheme = Theme.of(context).colorScheme;
+    return AuthScaffold(
+      icon: Icons.auto_stories_rounded,
+      marca: 'Studia',
+      subtitulo: 'Entre para começar seus estudos',
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextFormField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              autocorrect: false,
+              enabled: !_loading,
+              decoration: const InputDecoration(
+                labelText: 'E-mail',
+                prefixIcon: Icon(Icons.mail_outline),
+              ),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Informe o e-mail';
+                if (!v.contains('@')) return 'E-mail inválido';
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _senha,
+              obscureText: !_mostrarSenha,
+              enabled: !_loading,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) => _loading ? null : _submit(),
+              decoration: InputDecoration(
+                labelText: 'Senha',
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  tooltip: _mostrarSenha ? 'Ocultar senha' : 'Mostrar senha',
+                  icon: Icon(
+                    _mostrarSenha
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
                   ),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Informe o e-mail';
-                    if (!v.contains('@')) return 'E-mail inválido';
-                    return null;
-                  },
+                  onPressed: () =>
+                      setState(() => _mostrarSenha = !_mostrarSenha),
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _senha,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Senha',
-                    prefixIcon: Icon(Icons.lock_outline),
+              ),
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Informe a senha';
+                return null;
+              },
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 16),
+              AuthErrorBox(message: _error!),
+            ],
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: _loading ? null : _submit,
+              child: _loading
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Entrar'),
+            ),
+            const SizedBox(height: 8),
+            Center(
+              child: TextButton(
+                onPressed: _loading
+                    ? null
+                    : () => context.push(
+                          '/esqueci-senha',
+                          extra: _email.text.trim(),
+                        ),
+                style: TextButton.styleFrom(foregroundColor: scheme.primary),
+                child: const Text('Esqueci minha senha'),
+              ),
+            ),
+            const _OuDivisor(),
+            const SizedBox(height: 16),
+            OutlinedButton(
+              onPressed: _loading ? null : () => context.push('/register'),
+              child: const Text('Criar uma conta'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Divisor "ou" para separar a ação principal (Entrar) da secundária
+/// (Criar conta), padrão comum em telas de login.
+class _OuDivisor extends StatelessWidget {
+  const _OuDivisor();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final linha = Expanded(
+      child: Divider(color: scheme.outlineVariant, thickness: 1),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        children: [
+          linha,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              'ou',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
                   ),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Informe a senha';
-                    return null;
-                  },
-                ),
-                if (_error != null) ...[
-                  const SizedBox(height: 16),
-                  Text(
-                    _error!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
-                  ),
-                ],
-                const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: _loading ? null : _submit,
-                  child: _loading
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Entrar'),
-                ),
-                TextButton(
-                  onPressed: _loading
-                      ? null
-                      : () => context.push(
-                            '/esqueci-senha',
-                            extra: _email.text.trim(),
-                          ),
-                  child: const Text('Esqueci minha senha'),
-                ),
-                TextButton(
-                  onPressed: _loading ? null : () => context.push('/register'),
-                  child: const Text('Criar conta'),
-                ),
-              ],
             ),
           ),
-        ),
+          linha,
+        ],
       ),
     );
   }

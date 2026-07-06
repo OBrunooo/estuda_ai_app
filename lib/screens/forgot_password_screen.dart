@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../core/network/api_exception.dart';
 import '../repositories/auth_repository.dart';
+import '../widgets/auth_scaffold.dart';
 
 /// Solicita ao backend o envio de um token de 6 dígitos por e-mail
 /// (`POST /api/forgot-password`). Após sucesso, leva à tela de redefinição
@@ -67,92 +68,64 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Recuperar senha'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.canPop() ? context.pop() : context.go('/login'),
-        ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Icon(
-                  Icons.lock_reset_rounded,
-                  size: 56,
-                  color: scheme.primary,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Esqueceu sua senha?',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Informe o e-mail da sua conta. Vamos enviar um código de '
-                  '6 dígitos para você redefinir sua senha.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                ),
-                const SizedBox(height: 32),
-                TextFormField(
-                  controller: _email,
-                  keyboardType: TextInputType.emailAddress,
-                  autocorrect: false,
-                  decoration: const InputDecoration(
-                    labelText: 'E-mail',
-                    prefixIcon: Icon(Icons.mail_outline),
-                  ),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
-                      return 'Informe o e-mail';
-                    }
-                    if (!v.contains('@')) return 'E-mail inválido';
-                    return null;
-                  },
-                ),
-                if (_error != null) ...[
-                  const SizedBox(height: 16),
-                  Text(
-                    _error!,
-                    style: TextStyle(color: scheme.error),
-                  ),
-                ],
-                const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: _loading ? null : _submit,
-                  child: _loading
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Enviar código'),
-                ),
-                TextButton(
-                  onPressed: _loading
-                      ? null
-                      : () => context.go(
-                            '/redefinir-senha',
-                            extra: _email.text.trim(),
-                          ),
-                  child: const Text('Já tenho um código'),
-                ),
-              ],
+    return AuthScaffold(
+      icon: Icons.lock_reset_rounded,
+      titulo: 'Esqueceu sua senha?',
+      subtitulo: 'Informe o e-mail da sua conta. Vamos enviar um código de '
+          '6 dígitos para você redefinir sua senha.',
+      onBack: _loading
+          ? null
+          : () => context.canPop() ? context.pop() : context.go('/login'),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextFormField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              autocorrect: false,
+              enabled: !_loading,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) => _loading ? null : _submit(),
+              decoration: const InputDecoration(
+                labelText: 'E-mail',
+                prefixIcon: Icon(Icons.mail_outline),
+              ),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) {
+                  return 'Informe o e-mail';
+                }
+                if (!v.contains('@')) return 'E-mail inválido';
+                return null;
+              },
             ),
-          ),
+            if (_error != null) ...[
+              const SizedBox(height: 16),
+              AuthErrorBox(message: _error!),
+            ],
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: _loading ? null : _submit,
+              child: _loading
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Enviar código'),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: _loading
+                  ? null
+                  : () => context.go(
+                        '/redefinir-senha',
+                        extra: _email.text.trim(),
+                      ),
+              child: const Text('Já tenho um código'),
+            ),
+          ],
         ),
       ),
     );

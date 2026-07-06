@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../app/auth_notifier.dart';
 import '../app/avatar_notifier.dart';
+import '../widgets/app_confirm_dialog.dart';
 import '../widgets/user_avatar.dart';
 
 /// Configurações de perfil (nome, e-mail de leitura, avatar).
@@ -71,22 +72,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   Future<void> _confirmarSair() async {
-    final ok = await showDialog<bool>(
+    final ok = await showAppConfirmDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Sair'),
-        content: const Text('Deseja sair da sua conta?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Sair'),
-          ),
-        ],
-      ),
+      icon: Icons.logout_rounded,
+      titulo: 'Sair da conta',
+      mensagem: 'Deseja mesmo sair? Você precisará entrar novamente para '
+          'acessar seus temas.',
+      confirmarLabel: 'Sair',
+      tone: ConfirmTone.destructive,
     );
     if (ok != true || !mounted) return;
     await context.read<AuthNotifier>().logout();

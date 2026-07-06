@@ -9,7 +9,7 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, Tar
 ///   `127.0.0.1` no emulador aponta para o próprio emulador → "Connection refused".
 /// - **Dispositivo físico Android:** use o IP da sua máquina na LAN (ex. `192.168.0.10`)
 ///   via `--dart-define`; `10.0.2.2` não funciona no aparelho real.
-/// - **iOS Simulator / desktop / web:** padrão `http://127.0.0.1:80/api`.
+/// - **iOS Simulator / desktop / web:** padrão `http://187.127.8.223:80/api`.
 class AppConfig {
   AppConfig._();
 
@@ -25,12 +25,12 @@ class AppConfig {
       return _ensureTrailingSlash(_fromEnvironment);
     }
     if (kIsWeb) {
-      return 'http://127.0.0.1:80/api/';
+      return 'http://187.127.8.223:80/api/';
     }
     if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://127.0.0.1:80/api/';
+      return 'http://187.127.8.223:80/api/';
     }
-    return 'http://127.0.0.1:80/api/';
+    return 'http://187.127.8.223:80/api/';
   }
 
   static String _ensureTrailingSlash(String url) {

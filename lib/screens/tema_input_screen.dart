@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../services/tema_study_service.dart';
+import '../widgets/app_confirm_dialog.dart';
 import '../widgets/profile_app_bar_button.dart';
 
 class TemaInputScreen extends StatefulWidget {
@@ -43,31 +44,15 @@ class _TemaInputScreenState extends State<TemaInputScreen> {
       return;
     }
 
-    final confirmar = await showDialog<bool>(
+    final confirmar = await showAppConfirmDialog(
       context: context,
-      builder: (ctx) {
-        final scheme = Theme.of(ctx).colorScheme;
-        return AlertDialog(
-          icon: Icon(Icons.auto_awesome_rounded, color: scheme.primary),
-          title: const Text('Gerar este tema?'),
-          content: Text(
-            'Vamos preparar suas questões. O processo costuma levar alguns '
-            'minutos. Você pode continuar usando o app normalmente — o tema '
-            'aparecerá na sua lista assim que estiver pronto.',
-            style: Theme.of(ctx).textTheme.bodyMedium,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Gerar tema'),
-            ),
-          ],
-        );
-      },
+      icon: Icons.auto_awesome_rounded,
+      titulo: 'Gerar este tema?',
+      mensagem:
+          'Vamos preparar suas questões. O processo costuma levar alguns '
+          'minutos. Você pode continuar usando o app normalmente — o tema '
+          'aparecerá na sua lista assim que estiver pronto.',
+      confirmarLabel: 'Gerar tema',
     );
     if (confirmar != true || !mounted) return;
 

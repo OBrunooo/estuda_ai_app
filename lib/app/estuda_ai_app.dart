@@ -11,7 +11,7 @@ class EstudaAiApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Estuda AI',
+      title: 'Studia',
       theme: AppTheme.dark(),
       themeMode: ThemeMode.dark,
       routerConfig: router,
