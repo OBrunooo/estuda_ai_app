@@ -1,13 +1,14 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
+
 /// Base URL da API Laravel (prefixo `/api` já incluído).
 ///
 /// Sobrescreva em build, se precisar (com ou sem barra no final — o app normaliza):
 /// `flutter run --dart-define=API_BASE_URL=http://SEU_IP:80/api`
 ///
-/// - **Emulador Android:** o padrão é `http://10.0.2.2:80/api` (alias do host).
-///   `127.0.0.1` no emulador aponta para o próprio emulador → "Connection refused".
-/// - **Dispositivo físico Android:** use o IP da sua máquina na LAN (ex. `192.168.0.10`)
-///   via `--dart-define`; `10.0.2.2` não funciona no aparelho real.
-/// - **Padrão (todas as plataformas):** `https://studia.vps-bruno-gomes.com/api`.
+/// - **Debug:** padrão `http://127.0.0.1:8000/api/` (servidor Laravel local).
+///   No emulador Android use `10.0.2.2` (alias do host) ou passe `--dart-define`,
+///   pois `127.0.0.1` aponta para o próprio emulador → "Connection refused".
+/// - **Release:** padrão `https://studia.vps-bruno-gomes.com/api/`.
 class AppConfig {
   AppConfig._();
 
@@ -21,6 +22,9 @@ class AppConfig {
   static String get apiBaseUrl {
     if (_fromEnvironment.isNotEmpty) {
       return _ensureTrailingSlash(_fromEnvironment);
+    }
+    if (kDebugMode) {
+      return 'http://127.0.0.1:8000/api/';
     }
     return 'https://studia.vps-bruno-gomes.com/api/';
   }

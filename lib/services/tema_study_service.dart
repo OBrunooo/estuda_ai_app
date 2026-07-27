@@ -23,7 +23,7 @@ class _GeracaoPendente {
 /// Orquestra o disparo de geração de questões e o polling para descobrir
 /// quando o tema fica disponível.
 ///
-/// O endpoint `GET /api/buscar-gerar-questoes-tema` apenas enfileira um job
+/// O endpoint `GET /api/buscar-gerar-tema` apenas enfileira um job
 /// e retorna imediatamente. Como não há endpoint de status, descobrimos que
 /// o tema ficou pronto quando ele aparece em [TemaRepository.listarTemas].
 ///

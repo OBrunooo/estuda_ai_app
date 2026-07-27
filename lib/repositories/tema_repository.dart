@@ -31,7 +31,7 @@ class TemaRepository {
   /// devolver `success:false` (ex.: tema rejeitado antes do dispatch).
   Future<void> dispararGeracao(String tema) async {
     final raw = await _client.get(
-      'buscar-gerar-questoes-tema',
+      'buscar-gerar-tema',
       queryParameters: <String, dynamic>{'tema': tema},
     );
     final data = parseResponseData(raw);
